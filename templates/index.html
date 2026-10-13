@@ -52,6 +52,7 @@
             font-weight: 800;
             background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             display: flex;
             align-items: center;
@@ -440,6 +441,15 @@
                         <div class="stream-overlay">
                             <span class="badge" id="hudFingers">0 Ngón tay</span>
                         </div>
+                        <div id="holdProgressBanner" style="display: none; position: absolute; bottom: 12px; left: 12px; right: 12px; background: rgba(10, 14, 23, 0.92); border: 1px solid var(--accent-cyan); border-radius: 10px; padding: 10px 14px; z-index: 3; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 6px; font-weight: 700;">
+                                <span id="holdTargetText" style="color: var(--accent-cyan);">⏳ Giữ 2 bàn tay 1s để đổi chế độ</span>
+                                <span id="holdSecondsText" style="color: var(--accent-green);">0.0s / 1.0s</span>
+                            </div>
+                            <div style="background: rgba(255, 255, 255, 0.12); border-radius: 6px; height: 8px; overflow: hidden;">
+                                <div id="holdProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green)); transition: width 0.08s linear;"></div>
+                            </div>
+                        </div>
                         <img src="/video_feed" alt="Camera Stream" onerror="this.src=''; this.alt='Đang kết nối camera...';">
                     </div>
                     <div class="toast-status">
@@ -575,10 +585,10 @@
             <div class="hud-label">Quy tắc điều khiển bằng cử chỉ ngón tay & Lệnh IoT</div>
             <div class="rule-grid">
                 <div class="rule-item" style="border: 1px solid rgba(0, 242, 254, 0.4); background: rgba(0, 242, 254, 0.05);">
-                    <div class="rule-badge" style="background: rgba(0, 242, 254, 0.2); color: var(--accent-cyan);">2 Tay</div>
+                    <div class="rule-badge" style="background: rgba(0, 242, 254, 0.2); color: var(--accent-cyan);">2 Tay (1s)</div>
                     <div>
-                        <div style="font-weight: 700; color: var(--accent-cyan);">Đưa cả 2 bàn tay lên</div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Bật Động cơ (quay chậm) / Đưa lại 2 tay để Dừng & Quay về Morse</div>
+                        <div style="font-weight: 700; color: var(--accent-cyan);">Đưa cả 2 bàn tay cùng lúc (Giữ đủ 1.0s)</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Giữ đủ 1.0s để chuyển đổi giữa Dịch Mã Morse và Bật/Dừng Động Cơ L298N</div>
                     </div>
                 </div>
                 <div class="rule-item" style="border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.05);">
@@ -659,13 +669,29 @@
                 if (res.ok) {
                     const data = await res.json();
                     
-                    // Cập nhật số bàn tay / ngón tay
+                    // Cập nhật số bàn tay / ngón tay & Banner tiến trình giữ 2 tay
+                    const banner = document.getElementById('holdProgressBanner');
                     if (data.num_hands >= 2) {
                         document.getElementById('valFingers').innerText = '2 Tay';
                         document.getElementById('hudFingers').innerText = '🙌 2 Bàn Tay';
+                        if (banner) {
+                            banner.style.display = 'block';
+                            const pct = Math.round((data.hold_progress || 0) * 100);
+                            const sec = (data.hold_seconds || 0.0).toFixed(1);
+                            const target = (data.app_mode === 'MORSE') ? 'BẬT ĐỘNG CƠ' : 'DỪNG ĐỘNG CƠ & VỀ MORSE';
+                            document.getElementById('holdProgressBar').style.width = Math.min(100, pct) + '%';
+                            if (pct >= 100) {
+                                document.getElementById('holdTargetText').innerHTML = '✅ <b>ĐÃ CHUYỂN CHẾ ĐỘ!</b>';
+                                document.getElementById('holdSecondsText').innerText = 'Hạ 2 tay xuống';
+                            } else {
+                                document.getElementById('holdTargetText').innerText = `⏳ Giữ 2 tay: ${target}`;
+                                document.getElementById('holdSecondsText').innerText = `${sec}s / 1.0s (${pct}%)`;
+                            }
+                        }
                     } else {
                         document.getElementById('valFingers').innerText = data.num_fingers;
                         document.getElementById('hudFingers').innerText = data.num_fingers + ' Ngón tay';
+                        if (banner) banner.style.display = 'none';
                     }
                     
                     document.getElementById('valMorse').innerText = data.current_morse || '•';
