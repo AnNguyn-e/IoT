@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Morse Code & IoT Hardware Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-card: rgba(18, 24, 38, 0.75);
+            --bg-card-border: rgba(255, 255, 255, 0.08);
+            --accent-cyan: #00f2fe;
+            --accent-blue: #4facfe;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(79, 172, 254, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(0, 242, 254, 0.08) 0%, transparent 40%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .container { max-width: 1360px; margin: 0 auto; }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--bg-card-border);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .brand-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-tags {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .live-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--accent-green);
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.3); }
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--bg-card-border);
+            border-radius: 20px;
+            padding: 22px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-box {
+            position: relative;
+            width: 100%;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #000;
+            border: 2px solid rgba(79, 172, 254, 0.25);
+            aspect-ratio: 4 / 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .stream-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            display: flex;
+            gap: 8px;
+            z-index: 2;
+        }
+
+        .badge {
+            background: rgba(10, 14, 23, 0.75);
+            backdrop-filter: blur(8px);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hud-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .hud-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--bg-card-border);
+            border-radius: 14px;
+            padding: 14px 16px;
+        }
+
+        .hud-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .hud-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .morse-code-display {
+            background: rgba(0, 242, 254, 0.04);
+            border: 1px dashed rgba(0, 242, 254, 0.3);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .morse-symbols {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: 0.25em;
+            color: var(--accent-cyan);
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .result-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--bg-card-border);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .result-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #38bdf8;
+            min-height: 42px;
+            word-break: break-all;
+            padding: 8px 0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            outline: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.88rem;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-danger {
+            background: rgba(244, 63, 94, 0.15);
+            color: var(--accent-rose);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+        }
+        .btn-danger:hover { background: var(--accent-rose); color: #fff; }
+
+        .btn-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .btn-success:hover { background: var(--accent-green); color: #fff; }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-main);
+            border: 1px solid var(--bg-card-border);
+        }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.12); }
+
+        /* Hardware Module Card Styling */
+        .hardware-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .hardware-grid { grid-template-columns: 1fr; }
+        }
+
+        .hw-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--bg-card-border);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .hw-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            width: fit-content;
+        }
+
+        .hw-on {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
+        .hw-off {
+            background: rgba(148, 163, 184, 0.15);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hw-bulb {
+            font-size: 2.2rem;
+            filter: grayscale(1);
+            transition: all 0.3s ease;
+        }
+
+        .hw-bulb.active {
+            filter: drop-shadow(0 0 16px #f59e0b) grayscale(0);
+        }
+
+        .hw-motor {
+            font-size: 2.2rem;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .hw-motor.spinning {
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        .motor-speed-gauge {
+            display: flex;
+            gap: 4px;
+            margin-top: 6px;
+        }
+
+        .speed-bar {
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .speed-bar.active {
+            background: var(--accent-cyan);
+            box-shadow: 0 0 8px var(--accent-cyan);
+        }
+
+        .rules-card { margin-top: 24px; }
+
+        .rule-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .rule-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--bg-card-border);
+            padding: 12px 14px;
+            border-radius: 12px;
+        }
+
+        .rule-badge {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        .cheat-sheet {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
+            gap: 8px;
+            margin-top: 14px;
+            max-height: 160px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .cheat-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--bg-card-border);
+            border-radius: 8px;
+            padding: 6px 8px;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+
+        .cheat-char { font-weight: 700; color: var(--accent-cyan); }
+        .cheat-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        .toast-status {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="brand-title">
+                <span>⚡</span> AI Morse Code & Smart Home IoT
+            </div>
+            <div class="header-tags">
+                <div class="badge" id="modeBadge" onclick="toggleMode()" style="cursor: pointer; transition: all 0.2s;" title="Nhấn để chuyển đổi giữa Chế độ Morse và Động cơ">Chế độ: 🔤 Dịch Morse</div>
+                <div class="badge" id="hwBadge">GPIO: Đang kiểm tra...</div>
+                <div class="live-tag">
+                    <span class="live-dot"></span>
+                    <span>Camera Live (V4L2)</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-grid">
+            <!-- Cột trái: Camera stream & Điều khiển Ngoại vi -->
+            <div>
+                <div class="card">
+                    <div class="video-box">
+                        <div class="stream-overlay">
+                            <span class="badge" id="hudFingers">0 Ngón tay</span>
+                        </div>
+                        <img src="/video_feed" alt="Camera Stream" onerror="this.src=''; this.alt='Đang kết nối camera...';">
+                    </div>
+                    <div class="toast-status">
+                        <span>📌</span> <span id="statusMsg">Hệ thống sẵn sàng...</span>
+                    </div>
+                </div>
+
+                <!-- Card Điều khiển Module Phần Cứng -->
+                <div class="card" style="margin-top: 24px;">
+                    <div class="hud-label">Điều Khiển Module Ngoại Vi (Raspberry Pi GPIO)</div>
+                    <div class="hardware-grid">
+                        <!-- Module Relay CW019 & Đèn LED -->
+                        <div class="hw-box">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="font-weight: 700;">Relay CW019 (GPIO 27)</div>
+                                    <div class="hw-status-badge hw-off" id="relayBadge">TẮT</div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 14px; margin: 10px 0;">
+                                    <span class="hw-bulb" id="bulbIcon">💡</span>
+                                    <div style="font-size: 0.82rem; color: var(--text-muted);">
+                                        Mạch đèn LED qua Relay (COM - NO)<br>
+                                        Lệnh Morse: <b>O</b> (Bật), <b>F</b> (Tắt), <b>T</b> (Đảo)
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn-success" onclick="relayOn()">Bật Đèn</button>
+                                <button class="btn-danger" onclick="relayOff()">Tắt Đèn</button>
+                                <button class="btn-secondary" onclick="relayToggle()">Đảo Trạng Thái</button>
+                            </div>
+                        </div>
+
+                        <!-- Active Buzzer -->
+                        <div class="hw-box">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="font-weight: 700;">Active Buzzer (GPIO 17)</div>
+                                    <div class="hw-status-badge hw-on">HOẠT ĐỘNG</div>
+                                </div>
+                                <div style="font-size: 0.82rem; color: var(--text-muted); margin: 10px 0; line-height: 1.5;">
+                                    • Phát tiếng <b>Tít (0.12s)</b> khi nhận dấu Chấm (.)<br>
+                                    • Phát tiếng <b>Tè (0.35s)</b> khi nhận dấu Gạch (-)<br>
+                                    • Phát <b>Tít kép</b> khi dịch xong chữ cái
+                                </div>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn-secondary" onclick="testBuzzer()">🔊 Test Còi</button>
+                                <button class="btn-danger" onclick="triggerSos()">🚨 Báo Động SOS (5s)</button>
+                            </div>
+                        </div>
+
+                        <!-- Module Động Cơ DC - Driver L298N (GPIO 22, 23) -->
+                        <div class="hw-box" style="grid-column: 1 / -1;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="font-weight: 700;">Động Cơ DC - Driver L298N (IN1: GPIO 22, IN2: GPIO 23)</div>
+                                    <div class="hw-status-badge hw-off" id="motorBadge">DỪNG (0%)</div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 16px; margin: 10px 0;">
+                                    <span class="hw-motor" id="motorIcon">🌀</span>
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px;">
+                                            <span>Mức tốc độ: <b id="motorLevelText" style="color: var(--accent-cyan); font-size: 1rem;">0 / 5</b></span>
+                                            <span>Xung PWM: <b id="motorDutyText" style="color: var(--accent-green);">0%</b></span>
+                                        </div>
+                                        <div class="motor-speed-gauge">
+                                            <div class="speed-bar" id="spd1" title="Mức 1: 35%"></div>
+                                            <div class="speed-bar" id="spd2" title="Mức 2: 50%"></div>
+                                            <div class="speed-bar" id="spd3" title="Mức 3: 65%"></div>
+                                            <div class="speed-bar" id="spd4" title="Mức 4: 80%"></div>
+                                            <div class="speed-bar" id="spd5" title="Mức 5: 100%"></div>
+                                        </div>
+                                        <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 6px;">
+                                            💡 Cử chỉ AI: <b>Đưa 2 bàn tay</b> để Bật/Dừng | <b>Đưa 1 đến 5 ngón</b> để chuyển 5 mức tốc độ
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="btn-group" style="flex-wrap: wrap;">
+                                <button class="btn-danger" onclick="stopMotor()">🛑 Dừng Động Cơ</button>
+                                <button class="btn-secondary" onclick="setMotorSpeed(1)">Mức 1 (35%)</button>
+                                <button class="btn-secondary" onclick="setMotorSpeed(2)">Mức 2 (50%)</button>
+                                <button class="btn-secondary" onclick="setMotorSpeed(3)">Mức 3 (65%)</button>
+                                <button class="btn-secondary" onclick="setMotorSpeed(4)">Mức 4 (80%)</button>
+                                <button class="btn-success" onclick="setMotorSpeed(5)">Mức 5 (100%)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cột phải: Bảng điều khiển giải mã -->
+            <div class="card">
+                <div class="hud-grid">
+                    <div class="hud-item">
+                        <div class="hud-label">Số ngón tay giơ</div>
+                        <div class="hud-value" id="valFingers">0</div>
+                    </div>
+                    <div class="hud-item">
+                        <div class="hud-label">Ký tự vừa dịch</div>
+                        <div class="hud-value" style="color: var(--accent-green);" id="valLastChar">_</div>
+                    </div>
+                </div>
+
+                <div class="morse-code-display">
+                    <div class="hud-label" style="text-align: center;">Mã Morse Đang Nhập</div>
+                    <div class="morse-symbols" id="valMorse">...</div>
+                </div>
+
+                <div class="result-box">
+                    <div class="hud-label">Văn bản giải mã hoàn chỉnh</div>
+                    <div class="result-text" id="valText">_</div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn-secondary" onclick="addSpace()">␣ Thêm dấu cách</button>
+                    <button class="btn-secondary" onclick="backspace()">⌫ Xóa ký tự</button>
+                    <button class="btn-danger" onclick="clearAll()">🗑️ Xóa toàn bộ</button>
+                    <button class="btn-secondary" onclick="copyText()">📋 Sao chép</button>
+                </div>
+
+                <!-- Bảng tra cứu Morse -->
+                <div style="margin-top: 24px;">
+                    <div class="hud-label">Bảng tra cứu nhanh mã Morse</div>
+                    <div class="cheat-sheet" id="cheatSheet"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quy tắc cử chỉ -->
+        <div class="card rules-card">
+            <div class="hud-label">Quy tắc điều khiển bằng cử chỉ ngón tay & Lệnh IoT</div>
+            <div class="rule-grid">
+                <div class="rule-item" style="border: 1px solid rgba(0, 242, 254, 0.4); background: rgba(0, 242, 254, 0.05);">
+                    <div class="rule-badge" style="background: rgba(0, 242, 254, 0.2); color: var(--accent-cyan);">2 Tay</div>
+                    <div>
+                        <div style="font-weight: 700; color: var(--accent-cyan);">Đưa cả 2 bàn tay lên</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Bật Động cơ (quay chậm) / Đưa lại 2 tay để Dừng & Quay về Morse</div>
+                    </div>
+                </div>
+                <div class="rule-item" style="border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.05);">
+                    <div class="rule-badge" style="background: rgba(16, 185, 129, 0.2); color: var(--accent-green);">1..5</div>
+                    <div>
+                        <div style="font-weight: 700; color: var(--accent-green);">1 - 5 ngón (Chế độ Động cơ)</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Điều chỉnh 5 mức tốc độ quay (25% -> 100% PWM)</div>
+                    </div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-badge" style="background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan);">1</div>
+                    <div>
+                        <div style="font-weight: 700;">Giơ 1 ngón (Chế độ Morse)</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Nhập dấu Chấm (.) + Kêu Tít ngắn</div>
+                    </div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-badge" style="background: rgba(79, 172, 254, 0.15); color: var(--accent-blue);">2</div>
+                    <div>
+                        <div style="font-weight: 700;">Giơ 2 ngón (Chế độ Morse)</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Nhập dấu Gạch (-) + Kêu Tè dài</div>
+                    </div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-green);">0</div>
+                    <div>
+                        <div style="font-weight: 700;">Nắm tay (0 ngón)</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Dịch chữ & Thực thi lệnh thiết bị (O: Bật, F: Tắt, T: Đảo)</div>
+                    </div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-badge" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber);">4</div>
+                    <div>
+                        <div style="font-weight: 700;">Giơ 4 ngón</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Xóa toàn bộ văn bản trong Buffer</div>
+                    </div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-badge" style="background: rgba(244, 63, 94, 0.15); color: var(--accent-rose);">5</div>
+                    <div>
+                        <div style="font-weight: 700;">Xòe 5 ngón</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Xóa mã Morse đang nhập dở</div>
+                    </div>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-badge" style="background: rgba(239, 68, 68, 0.2); color: #ef4444;">SOS</div>
+                    <div>
+                        <div style="font-weight: 700;">Dịch ra SOS (...---...)</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Còi & Đèn chớp 5s (Khóa nhận diện 5s)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MORSE_MAP = {
+            'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+            'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+            'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+            'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+            'Y': '-.--', 'Z': '--..', '0': '-----', '1': '.----', '2': '..---',
+            '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...',
+            '8': '---..', '9': '----.', 'SOS': '...---...'
+        };
+
+        const cheatContainer = document.getElementById('cheatSheet');
+        for (const [k, v] of Object.entries(MORSE_MAP)) {
+            const div = document.createElement('div');
+            div.className = 'cheat-item';
+            div.innerHTML = `<div class="cheat-char">${k}</div><div class="cheat-code">${v}</div>`;
+            cheatContainer.appendChild(div);
+        }
+
+        async function pollStatus() {
+            try {
+                const res = await fetch('/api/status');
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // Cập nhật số bàn tay / ngón tay
+                    if (data.num_hands >= 2) {
+                        document.getElementById('valFingers').innerText = '2 Tay';
+                        document.getElementById('hudFingers').innerText = '🙌 2 Bàn Tay';
+                    } else {
+                        document.getElementById('valFingers').innerText = data.num_fingers;
+                        document.getElementById('hudFingers').innerText = data.num_fingers + ' Ngón tay';
+                    }
+                    
+                    document.getElementById('valMorse').innerText = data.current_morse || '•';
+                    document.getElementById('valLastChar').innerText = data.last_char || '_';
+                    document.getElementById('valText').innerText = data.decoded_text || '(Chưa có dữ liệu)';
+                    
+                    const statusMsgEl = document.getElementById('statusMsg');
+                    statusMsgEl.innerText = data.status_msg;
+
+                    // Hiệu ứng cảnh báo SOS trên Web
+                    if (data.is_sos_active) {
+                        statusMsgEl.style.color = '#ef4444';
+                        statusMsgEl.style.fontWeight = '700';
+                    } else {
+                        statusMsgEl.style.color = 'var(--text-muted)';
+                        statusMsgEl.style.fontWeight = '400';
+                    }
+
+                    // Cập nhật Chế độ Hệ thống (Morse vs Động cơ)
+                    const modeBadge = document.getElementById('modeBadge');
+                    if (data.app_mode === 'MOTOR') {
+                        modeBadge.innerText = 'Chế độ: ⚙️ ĐIỀU KHIỂN ĐỘNG CƠ';
+                        modeBadge.style.background = 'rgba(0, 242, 254, 0.2)';
+                        modeBadge.style.color = 'var(--accent-cyan)';
+                        modeBadge.style.borderColor = 'var(--accent-cyan)';
+                        modeBadge.style.boxShadow = '0 0 10px rgba(0, 242, 254, 0.3)';
+                    } else {
+                        modeBadge.innerText = 'Chế độ: 🔤 Dịch Mã Morse';
+                        modeBadge.style.background = 'rgba(10, 14, 23, 0.75)';
+                        modeBadge.style.color = 'var(--text-main)';
+                        modeBadge.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                        modeBadge.style.boxShadow = 'none';
+                    }
+
+                    // Cập nhật trạng thái Động Cơ DC (GPIO 18 PWM)
+                    const motorBadge = document.getElementById('motorBadge');
+                    const motorIcon = document.getElementById('motorIcon');
+                    const motorLevelText = document.getElementById('motorLevelText');
+                    const motorDutyText = document.getElementById('motorDutyText');
+                    const speed = data.motor_speed || 0;
+                    const duty = data.motor_duty || 0;
+
+                    motorLevelText.innerText = speed + ' / 5';
+                    motorDutyText.innerText = duty + '% PWM';
+
+                    if (speed > 0) {
+                        motorBadge.innerText = `ĐANG QUAY (MỨC ${speed} - ${duty}%)`;
+                        motorBadge.className = 'hw-status-badge hw-on';
+                        motorIcon.className = 'hw-motor spinning';
+                        const durations = { 1: '1.2s', 2: '0.8s', 3: '0.5s', 4: '0.3s', 5: '0.15s' };
+                        motorIcon.style.animationDuration = durations[speed] || '0.5s';
+                    } else {
+                        motorBadge.innerText = 'DỪNG (0%)';
+                        motorBadge.className = 'hw-status-badge hw-off';
+                        motorIcon.className = 'hw-motor';
+                    }
+
+                    // Cập nhật 5 vạch gauge tốc độ
+                    for (let i = 1; i <= 5; i++) {
+                        const bar = document.getElementById('spd' + i);
+                        if (bar) {
+                            if (i <= speed) {
+                                bar.className = 'speed-bar active';
+                            } else {
+                                bar.className = 'speed-bar';
+                            }
+                        }
+                    }
+
+                    // Cập nhật trạng thái Relay & Bóng đèn
+                    const relayBadge = document.getElementById('relayBadge');
+                    const bulbIcon = document.getElementById('bulbIcon');
+                    if (data.relay_state) {
+                        relayBadge.innerText = 'ĐANG BẬT (ON)';
+                        relayBadge.className = 'hw-status-badge hw-on';
+                        bulbIcon.className = 'hw-bulb active';
+                    } else {
+                        relayBadge.innerText = 'ĐANG TẮT (OFF)';
+                        relayBadge.className = 'hw-status-badge hw-off';
+                        bulbIcon.className = 'hw-bulb';
+                    }
+
+                    // Cập nhật chế độ phần cứng
+                    const hwBadge = document.getElementById('hwBadge');
+                    if (data.hardware_active) {
+                        hwBadge.innerText = 'GPIO: Sẵn Sàng (Pi)';
+                        hwBadge.style.color = '#10b981';
+                    } else {
+                        hwBadge.innerText = 'GPIO: Mô Phỏng';
+                        hwBadge.style.color = '#94a3b8';
+                    }
+                }
+            } catch (e) {
+                console.error("Lỗi cập nhật trạng thái:", e);
+            }
+        }
+
+        setInterval(pollStatus, 250);
+
+        async function clearAll() {
+            await fetch('/api/clear', { method: 'POST' });
+            pollStatus();
+        }
+
+        async function backspace() {
+            await fetch('/api/backspace', { method: 'POST' });
+            pollStatus();
+        }
+
+        async function addSpace() {
+            await fetch('/api/space', { method: 'POST' });
+            pollStatus();
+        }
+
+        function copyText() {
+            const txt = document.getElementById('valText').innerText;
+            navigator.clipboard.writeText(txt);
+            alert("Đã sao chép: " + txt);
+        }
+
+        // Điều khiển Relay qua Web
+        async function relayOn() {
+            await fetch('/api/relay/on', { method: 'POST' });
+            pollStatus();
+        }
+
+        async function relayOff() {
+            await fetch('/api/relay/off', { method: 'POST' });
+            pollStatus();
+        }
+
+        async function relayToggle() {
+            await fetch('/api/relay/toggle', { method: 'POST' });
+            pollStatus();
+        }
+
+        async function testBuzzer() {
+            await fetch('/api/buzzer/test', { method: 'POST' });
+        }
+
+        async function triggerSos() {
+            await fetch('/api/sos', { method: 'POST' });
+            pollStatus();
+        }
+
+        // Điều khiển Động Cơ DC PWM qua Web
+        async function setMotorSpeed(level) {
+            await fetch('/api/motor/set_speed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ level: level })
+            });
+            pollStatus();
+        }
+
+        async function stopMotor() {
+            await fetch('/api/motor/stop', { method: 'POST' });
+            pollStatus();
+        }
+
+        async function toggleMode() {
+            await fetch('/api/mode/toggle', { method: 'POST' });
+            pollStatus();
+        }
+    </script>
+</body>
+</html>

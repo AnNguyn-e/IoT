@@ -1,0 +1,2 @@
+scp -r templates HandTrackingModule.py morse_web_app.py HARDWARE_CONNECTION_GUIDE.md generic@192.168.137.219:~/labs/week09/
+echo "==> Da dong bo thanh cong sang Raspberry Pi!"
